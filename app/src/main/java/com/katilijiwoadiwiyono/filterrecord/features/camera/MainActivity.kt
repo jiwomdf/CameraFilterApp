@@ -36,34 +36,25 @@ import com.katilijiwoadiwiyono.filterrecord.data.model.CameraCapability
 import com.katilijiwoadiwiyono.filterrecord.databinding.ActivityMainBinding
 import com.katilijiwoadiwiyono.filterrecord.features.viewer.MediaViewerActivity
 import com.katilijiwoadiwiyono.filterrecord.utils.UiState
-import com.katilijiwoadiwiyono.filterrecord.utils.checkPermission
+import com.katilijiwoadiwiyono.filterrecord.utils.checkMultiplePermissions
 import com.katilijiwoadiwiyono.filterrecord.utils.getAspectRatio
 import com.katilijiwoadiwiyono.filterrecord.utils.getAspectRatioString
 import com.katilijiwoadiwiyono.filterrecord.utils.getNameString
-import com.katilijiwoadiwiyono.filterrecord.utils.requestPermissionLauncher
+import com.katilijiwoadiwiyono.filterrecord.utils.requestMultiplePermissionLauncher
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class MainActivity : BaseActivity<ActivityMainBinding>() {
+class MainActivity: BaseActivity<ActivityMainBinding>() {
 
-    private val storagePermissionLauncher = requestPermissionLauncher(
-        onPermissionGranted = {
-            showToast("storage granted", Toast.LENGTH_SHORT)
-        },
-        onPermissionDenied = {
-            showToast("Permission is Required", Toast.LENGTH_SHORT)
-        }
-    )
-
-    private val cameraPermissionLauncher = requestPermissionLauncher(
+    private val permissionsLauncher = requestMultiplePermissionLauncher(
         onPermissionGranted = {
             initCamera()
         },
         onPermissionDenied = {
-            showToast("Permission is Required", Toast.LENGTH_SHORT)
+            showToast("Permission $it Required", Toast.LENGTH_SHORT)
         }
     )
 
@@ -76,7 +67,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private var cameraIndex = 0
     private var qualityIndex = DEFAULT_QUALITY_IDX
-    private var audioEnabled = false
 
     private val mainThreadExecutor by lazy { ContextCompat.getMainExecutor(this) }
     private var enumerationDeferred: Deferred<Unit>? = null
@@ -100,11 +90,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             whenStarted {
                 val provider = ProcessCameraProvider.getInstance(this@MainActivity).await()
                 provider.unbindAll()
-
-                for (camSelector in arrayOf(
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    CameraSelector.DEFAULT_FRONT_CAMERA
-                )) {
+                val arrCamera = arrayOf(CameraSelector.DEFAULT_BACK_CAMERA, CameraSelector.DEFAULT_FRONT_CAMERA)
+                for (camSelector in arrCamera) {
                     try {
                         if (provider.hasCamera(camSelector)) {
                             val camera = provider.bindToLifecycle(this@MainActivity, camSelector)
@@ -129,8 +116,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
 
-        //checkStoragePermission()
-        checkCameraPermission()
+        checkPermissions()
     }
 
     /**
@@ -205,12 +191,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                     it.stopButton.visibility = View.INVISIBLE
 
                     it.cameraButton.visibility = View.VISIBLE
-                    it.audioSelection.visibility = View.VISIBLE
                     it.qualitySelection.visibility = View.VISIBLE
                 }
                 UiState.RECORDING -> {
                     it.cameraButton.visibility = View.INVISIBLE
-                    it.audioSelection.visibility = View.INVISIBLE
                     it.qualitySelection.visibility = View.INVISIBLE
 
                     it.captureButton.setImageResource(R.drawable.ic_pause)
@@ -243,8 +227,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         cameraIndex = 0
         qualityIndex = DEFAULT_QUALITY_IDX
-        audioEnabled = false
-        binding.audioSelection.isChecked = audioEnabled
         initializeQualitySectionsUI()
     }
 
@@ -259,7 +241,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 cameraButton,
                 captureButton,
                 stopButton,
-                audioSelection,
                 qualitySelection
             ).forEach {
                 it.isEnabled = enable
@@ -288,7 +269,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             it.getNameString()
         }
         // create the adapter to Quality selection RecyclerView
-        binding.qualitySelection.apply {
+        with(binding.qualitySelection) {
             layoutManager = LinearLayoutManager(context)
             adapter = VideoQualityAdapter(
                 dataset = selectorStrings
@@ -326,25 +307,17 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     /**
      * Permission Section
      */
-    private fun checkStoragePermission() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    private fun checkPermissions() {
+        val isTiramisuAndAbove = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        val permission = if (isTiramisuAndAbove) {
             Manifest.permission.READ_MEDIA_IMAGES
         } else {
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
-        checkPermission(
-            permission = permission,
-            launcher = storagePermissionLauncher,
-            onPermissionGranted = {
-
-            }
-        )
-    }
-
-    private fun checkCameraPermission() {
-        checkPermission(
-            permission = Manifest.permission.CAMERA,
-            launcher = cameraPermissionLauncher,
+        val arrPermission = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+        checkMultiplePermissions(
+            permissions = arrPermission,
+            launcher = permissionsLauncher,
             onPermissionGranted = {
                 initCamera()
             }
@@ -393,12 +366,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                     }
                 }
                 isEnabled = false
-            }
-
-            // audioEnabled by default is disabled.
-            audioSelection.isChecked = audioEnabled
-            audioSelection.setOnClickListener {
-                audioEnabled = audioSelection.isChecked
             }
 
             // React to user touching the capture button
@@ -548,7 +515,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         // configure Recorder and Start recording to the mediaStoreOutput.
         currentRecording = videoCapture.output
             .prepareRecording(this, mediaStoreOutput)
-            .apply { if (audioEnabled) withAudioEnabled() }
+            .withAudioEnabled()
             .start(mainThreadExecutor, captureListener)
 
         Log.i(TAG, "Recording started")

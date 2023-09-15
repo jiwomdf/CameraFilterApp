@@ -8,6 +8,10 @@
     <color name="bkLightPurple">#FF880088</color>
     <color name="bkPurple">#FFFF00FF</color>
 
+    <color name="red">#FF0000</color>
+    <color name="green">#008000</color>
+    <color name="blue">#0000FF</color>
+
     <color name="icPressed">#AAFFFFFF</color>
     <color name="icActive">#FFFFFFFF</color>
     <color name="icFocused">#DDFFFFFF</color>
