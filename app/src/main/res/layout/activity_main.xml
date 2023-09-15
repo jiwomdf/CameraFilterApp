@@ -11,11 +11,12 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <androidx.camera.view.PreviewView
+        <jp.co.cyberagent.android.gpuimage.GPUImageView
             android:id="@+id/previewView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:background="@color/bkPurple"
+            app:gpuimage_show_loading="false"
+            app:gpuimage_surface_type="texture_view"
             app:layout_constraintBottom_toTopOf="@+id/ll_navigation"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -38,21 +39,27 @@
                 android:gravity="center">
 
                 <LinearLayout
+                    android:id="@+id/ll_red"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
                     android:layout_marginEnd="16dp"
-                    android:background="@color/red" />
+                    android:background="@color/red"
+                    android:orientation="horizontal" />
 
                 <LinearLayout
+                    android:id="@+id/ll_green"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
-                    android:background="@color/green" />
+                    android:background="@color/green"
+                    android:orientation="horizontal"/>
 
                 <LinearLayout
+                    android:id="@+id/ll_blue"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
                     android:layout_marginStart="16dp"
-                    android:background="@color/blue" />
+                    android:background="@color/blue"
+                    android:orientation="horizontal"/>
 
             </LinearLayout>
 
@@ -73,6 +80,13 @@
                     app:layout_constraintEnd_toStartOf="@+id/capture_button"
                     tools:ignore="ImageContrastCheck"
                     tools:visibility="visible" />
+
+                <ImageButton
+                    android:id="@+id/btn_take_photo"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:layout_marginStart="32dp"
+                    android:background="@drawable/camera_alt_24"/>
 
                 <ImageButton
                     android:id="@+id/capture_button"

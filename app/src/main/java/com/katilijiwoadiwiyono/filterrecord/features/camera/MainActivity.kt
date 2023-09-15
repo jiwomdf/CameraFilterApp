@@ -1,19 +1,23 @@
 package com.katilijiwoadiwiyono.filterrecord.features.camera
 
+
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.ContentValues
+import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
+import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
@@ -33,19 +37,27 @@ import com.katilijiwoadiwiyono.filterrecord.R
 import com.katilijiwoadiwiyono.filterrecord.adapter.VideoQualityAdapter
 import com.katilijiwoadiwiyono.filterrecord.common.BaseActivity
 import com.katilijiwoadiwiyono.filterrecord.data.model.CameraCapability
+import com.katilijiwoadiwiyono.filterrecord.data.model.Vec3
 import com.katilijiwoadiwiyono.filterrecord.databinding.ActivityMainBinding
 import com.katilijiwoadiwiyono.filterrecord.features.viewer.MediaViewerActivity
 import com.katilijiwoadiwiyono.filterrecord.utils.UiState
+import com.katilijiwoadiwiyono.filterrecord.utils.YuvToRgbConverter
 import com.katilijiwoadiwiyono.filterrecord.utils.checkMultiplePermissions
-import com.katilijiwoadiwiyono.filterrecord.utils.getAspectRatio
+import com.katilijiwoadiwiyono.filterrecord.utils.filterutil.GPUImageColorFilter
 import com.katilijiwoadiwiyono.filterrecord.utils.getAspectRatioString
 import com.katilijiwoadiwiyono.filterrecord.utils.getNameString
 import com.katilijiwoadiwiyono.filterrecord.utils.requestMultiplePermissionLauncher
+import com.katilijiwoadiwiyono.filterrecord.utils.rotateBitmap
+import com.programmergabut.scopestorageutility.ScopeStorageUtility
+import com.programmergabut.scopestorageutility.util.Extension
+import jp.co.cyberagent.android.gpuimage.filter.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.Executors
+
 
 class MainActivity: BaseActivity<ActivityMainBinding>() {
 
@@ -70,6 +82,14 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
 
     private val mainThreadExecutor by lazy { ContextCompat.getMainExecutor(this) }
     private var enumerationDeferred: Deferred<Unit>? = null
+
+    private var bitmap: Bitmap? = null
+    private val executor = Executors.newSingleThreadExecutor()
+    private lateinit var converter: YuvToRgbConverter
+
+    lateinit var cameraProvider: ProcessCameraProvider
+    private var listImg = mutableListOf<Bitmap>()
+    private var isRecording = false
 
     companion object {
         // default Quality selection if no input from UI
@@ -116,15 +136,137 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
 
+        converter = YuvToRgbConverter(this)
+        initView()
         checkPermissions()
+        setListener()
+    }
+
+    private fun initView() {
+        with(binding) {
+            previewView.rotation = 90F
+        }
+    }
+
+    private fun setListener() {
+        with(binding) {
+            cameraButton.setOnClickListener {
+                cameraIndex = (cameraIndex + 1) % cameraCapabilities.size
+                // camera device change is in effect instantly:
+                //   - reset quality selection
+                //   - restart preview
+                qualityIndex = DEFAULT_QUALITY_IDX
+                initializeQualitySectionsUI()
+                enableUI(false)
+                lifecycleScope.launch {
+                    bindCaptureUseCase(cameraProvider)
+                }
+            }
+
+            captureButton.setOnClickListener {
+                isRecording = true
+                if (!this@MainActivity::recordingState.isInitialized ||
+                    recordingState is VideoRecordEvent.Finalize) {
+                    enableUI(false)  // Our eventListener will turn on the Recording UI.
+                    startRecording()
+                } else {
+                    when (recordingState) {
+                        is VideoRecordEvent.Start -> {
+                            currentRecording?.pause()
+                            stopButton.visibility = View.VISIBLE
+                        }
+                        is VideoRecordEvent.Pause -> currentRecording?.resume()
+                        is VideoRecordEvent.Resume -> currentRecording?.pause()
+                        else -> throw IllegalStateException("recordingState in unknown state")
+                    }
+                }
+            }
+
+            stopButton.setOnClickListener {
+                // stopping: hide it after getting a click before we go to viewing fragment
+                stopButton.visibility = View.INVISIBLE
+                if (currentRecording == null || recordingState is VideoRecordEvent.Finalize) {
+                    return@setOnClickListener
+                }
+
+                val recording = currentRecording
+                if (recording != null) {
+                    recording.stop()
+                    currentRecording = null
+                }
+                captureButton.setImageResource(R.drawable.ic_start)
+
+                isRecording = false
+                //TODO JIWO
+                listImg.clear()
+            }
+
+            btnTakePhoto.setOnClickListener {
+                val bitmap = previewView.gpuImage.bitmapWithFilterApplied
+                val fixBitmap = bitmap.rotateBitmap(90f) ?: kotlin.run {
+                    showToast("failed rotate bitmap")
+                    return@setOnClickListener
+                }
+                val name = "CameraX-recording-" +
+                        SimpleDateFormat(FILENAME_FORMAT, Locale.US)
+                            .format(System.currentTimeMillis())
+
+                ScopeStorageUtility
+                    .manage(this@MainActivity)
+                    .isShareStorage(true)
+                    .attribute(
+                        fileName = name,
+                        directory = "",
+                        env = Environment.DIRECTORY_DCIM,
+                        extension = Extension.get(Extension.PNG)
+                    )
+                    .save(fixBitmap, 100, {
+                        runOnUiThread {
+                            showToast("successfully save $name")
+                            getImageUri(name)?.let {
+                                openInGallery(it)
+                            }
+                        }
+                    }, {
+                        runOnUiThread {
+                            showToast(it.toString())
+                        }
+                    })
+            }
+
+            llRed.setOnClickListener {
+                previewView.filter = GPUImageColorFilter.init(Vec3(1.0, 0.0, 0.0))
+            }
+
+            llBlue.setOnClickListener {
+                previewView.filter = GPUImageColorFilter.init(Vec3(0.0, 0.0, 1.0))
+            }
+
+            llGreen.setOnClickListener {
+                previewView.filter = GPUImageColorFilter.init(Vec3(0.0, 1.0, 0.0))
+            }
+        }
+    }
+
+    private fun getImageUri(name: String): Uri? {
+        return ScopeStorageUtility
+            .manage(this@MainActivity)
+            .isShareStorage(true)
+            .attribute(
+                fileName = name,
+                directory = "",
+                env = Environment.DIRECTORY_DCIM,
+                extension = Extension.get(Extension.PNG)
+            )
+            .loadSharedFileUri(this@MainActivity, "com.katilijiwoadiwiyono.filterrecord")
     }
 
     /**
      * Camera Section
      */
-    private suspend fun bindCaptureUseCase() {
+    @OptIn(ExperimentalGetImage::class)
+    private fun bindCaptureUseCase(cameraProvider: ProcessCameraProvider) {
         with(binding) {
-            val cameraProvider = ProcessCameraProvider.getInstance(this@MainActivity).await()
             val cameraSelector = getCameraSelector(cameraIndex)
 
             val quality = cameraCapabilities[cameraIndex].qualities[qualityIndex]
@@ -137,25 +279,23 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
                 )
             }
 
-            val preview = Preview.Builder()
-                .setTargetAspectRatio(quality.getAspectRatio())
-                .build().apply {
-                    setSurfaceProvider(previewView.surfaceProvider)
+            val imageAnalysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
+            imageAnalysis.setAnalyzer(executor) {
+                val bitmap = allocateBitmapIfNecessary(it.width, it.height)
+                converter.yuvToRgb(it.image!!, bitmap)
+                it.close()
+                previewView.post {
+                    previewView.setImage(bitmap)
+                    if(isRecording) {
+                        listImg.add(bitmap)
+                    }
                 }
+            }
 
-            val recorder = Recorder.Builder()
-                .setQualitySelector(qualitySelector)
-                .build()
-            videoCapture = VideoCapture.withOutput(recorder)
 
             try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this@MainActivity,
-                    cameraSelector,
-                    videoCapture,
-                    preview
-                )
+                cameraProvider.bindToLifecycle(this@MainActivity,
+                    cameraSelector, imageAnalysis)
             } catch (exc: Exception) {
                 // we are on main thread, let's reset the controls on the UI.
                 Log.e(TAG, "Use case binding failed", exc)
@@ -163,6 +303,13 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             }
             enableUI(true)
         }
+    }
+
+    private fun allocateBitmapIfNecessary(width: Int, height: Int): Bitmap {
+        if (bitmap == null || bitmap!!.width != width || bitmap!!.height != height) {
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        }
+        return bitmap!!
     }
 
     /**
@@ -274,28 +421,29 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             adapter = VideoQualityAdapter(
                 dataset = selectorStrings
             ) { binding, qcString, position ->
+                with(binding) {
+                    apply {
+                        qualityTextView.text = qcString
+                        root.isSelected = (position == qualityIndex)
+                    }
 
-                binding.apply {
-                    qualityTextView.text = qcString
-                    root.isSelected = (position == qualityIndex)
-                }
+                    root.setOnClickListener {
+                        if (qualityIndex == position) return@setOnClickListener
 
-                binding.root.setOnClickListener {
-                    if (qualityIndex == position) return@setOnClickListener
+                        // deselect the previous selection on UI.
+                        findViewHolderForAdapterPosition(qualityIndex)
+                            ?.itemView
+                            ?.isSelected = false
 
-                    // deselect the previous selection on UI.
-                    findViewHolderForAdapterPosition(qualityIndex)
-                        ?.itemView
-                        ?.isSelected = false
+                        // turn on the new selection on UI.
+                        root.isSelected = true
+                        qualityIndex = position
 
-                    // turn on the new selection on UI.
-                    binding.root.isSelected = true
-                    qualityIndex = position
-
-                    // rebind the use cases to put the new QualitySelection in action.
-                    enableUI(false)
-                    lifecycleScope.launch {
-                        bindCaptureUseCase()
+                        // rebind the use cases to put the new QualitySelection in action.
+                        enableUI(false)
+                        lifecycleScope.launch {
+                            bindCaptureUseCase(cameraProvider)
+                        }
                     }
                 }
             }
@@ -314,7 +462,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
         } else {
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
-        val arrPermission = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+        val arrPermission = arrayOf(permission, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
         checkMultiplePermissions(
             permissions = arrPermission,
             launcher = permissionsLauncher,
@@ -340,7 +488,12 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             }
             initializeQualitySectionsUI()
 
-            bindCaptureUseCase()
+            // Init CameraX.
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(this@MainActivity);
+            cameraProviderFuture.addListener({
+                cameraProvider = cameraProviderFuture.get()
+                bindCaptureUseCase(cameraProvider)
+            }, ContextCompat.getMainExecutor(this@MainActivity))
         }
     }
 
@@ -352,59 +505,12 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
     @SuppressLint("ClickableViewAccessibility", "MissingPermission")
     private fun initializeUI() {
         with(binding) {
-            cameraButton.apply {
-                setOnClickListener {
-                    cameraIndex = (cameraIndex + 1) % cameraCapabilities.size
-                    // camera device change is in effect instantly:
-                    //   - reset quality selection
-                    //   - restart preview
-                    qualityIndex = DEFAULT_QUALITY_IDX
-                    initializeQualitySectionsUI()
-                    enableUI(false)
-                    lifecycleScope.launch {
-                        bindCaptureUseCase()
-                    }
-                }
-                isEnabled = false
-            }
+            cameraButton.isEnabled = false
 
             // React to user touching the capture button
-            captureButton.apply {
-                setOnClickListener {
-                    if (!this@MainActivity::recordingState.isInitialized ||
-                        recordingState is VideoRecordEvent.Finalize) {
-                        enableUI(false)  // Our eventListener will turn on the Recording UI.
-                        startRecording()
-                    } else {
-                        when (recordingState) {
-                            is VideoRecordEvent.Start -> {
-                                currentRecording?.pause()
-                                stopButton.visibility = View.VISIBLE
-                            }
-                            is VideoRecordEvent.Pause -> currentRecording?.resume()
-                            is VideoRecordEvent.Resume -> currentRecording?.pause()
-                            else -> throw IllegalStateException("recordingState in unknown state")
-                        }
-                    }
-                }
-                isEnabled = false
-            }
+            captureButton.isEnabled = false
 
             stopButton.apply {
-                setOnClickListener {
-                    // stopping: hide it after getting a click before we go to viewing fragment
-                    stopButton.visibility = View.INVISIBLE
-                    if (currentRecording == null || recordingState is VideoRecordEvent.Finalize) {
-                        return@setOnClickListener
-                    }
-
-                    val recording = currentRecording
-                    if (recording != null) {
-                        recording.stop()
-                        currentRecording = null
-                    }
-                    captureButton.setImageResource(R.drawable.ic_start)
-                }
                 // ensure the stop button is initialized disabled & invisible
                 visibility = View.INVISIBLE
                 isEnabled = false
@@ -498,6 +604,8 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
      */
     @SuppressLint("MissingPermission")
     private fun startRecording() {
+
+        /** CameraX record
         // create MediaStoreOutputOptions for our recorder: resulting our recording!
         val name = "CameraX-recording-" +
                 SimpleDateFormat(FILENAME_FORMAT, Locale.US)
@@ -518,6 +626,33 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             .withAudioEnabled()
             .start(mainThreadExecutor, captureListener)
 
-        Log.i(TAG, "Recording started")
+        Log.i(TAG, "Recording started") **/
+
+
+        /** Bitmap record
+        val bitmapToVideoEncoder = BitmapToVideoEncoder {
+            Toast.makeText(
+                this@MainActivity,
+                "Encoding complete!",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+
+        val width = binding.previewView.width
+        val height = binding.previewView.height
+        bitmapToVideoEncoder.startEncoding(width, height, File(""))
+        listImg.forEach {
+            bitmapToVideoEncoder.queueFrame(it)
+        }
+        bitmapToVideoEncoder.stopEncoding() **/
     }
+
+    private fun openInGallery(uri: Uri) {
+        val intent = Intent()
+        intent.action = Intent.ACTION_VIEW
+        intent.setDataAndType(uri, "image/*")
+        startActivity(intent)
+
+    }
+
 }
