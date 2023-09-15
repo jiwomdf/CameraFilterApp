@@ -50,17 +50,19 @@ dependencies {
     implementation("androidx.concurrent:concurrent-futures-ktx:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.7.2")
-    implementation("androidx.navigation:navigation-ui-ktx:2.7.2")
 
-    // CameraX dependencies (first release for video is: "1.1.0-alpha10")
+    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
+    implementation("com.github.jiwomdf:Scope-Storage-Utility:1.0.4")
+
     val cameraxVersion = "1.3.0-rc01"
-    // The following line is optional, as the core library is included indirectly by camera-camera2
     implementation("androidx.camera:camera-core:${cameraxVersion}")
     implementation("androidx.camera:camera-camera2:${cameraxVersion}")
     implementation("androidx.camera:camera-lifecycle:${cameraxVersion}")
     implementation("androidx.camera:camera-video:${cameraxVersion}")
     implementation("androidx.camera:camera-view:${cameraxVersion}")
+
+    implementation("com.github.MasayukiSuda:GPUVideo-android:v0.1.2")
+
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
