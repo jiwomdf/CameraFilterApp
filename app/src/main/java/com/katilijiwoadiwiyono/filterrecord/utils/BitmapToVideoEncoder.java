@@ -17,6 +17,8 @@ import java.util.concurrent.CountDownLatch;
 
 import io.reactivex.Completable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
 
 public class BitmapToVideoEncoder {
@@ -34,7 +36,7 @@ public class BitmapToVideoEncoder {
     private static final String MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
     private static int mWidth;
     private static int mHeight;
-    private static final int BIT_RATE = 16000000;
+    public static final int BIT_RATE = 16000000;
     private static final int FRAME_RATE = 30; // Frames per second
 
     private static final int I_FRAME_INTERVAL = 1;
@@ -109,10 +111,17 @@ public class BitmapToVideoEncoder {
 
         Log.d(TAG, "Initialization complete. Starting encoder...");
 
+        // Second argument is onError Action
         Completable.fromAction(() -> encode())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe();
+                .subscribe(() -> {
+                    Log.e(TAG, "startEncoding: mantap");
+                }, e -> {
+                    // Handle you exception here.
+                    Log.e(TAG, "startEncoding: " + e);
+                });
+
     }
 
     public void stopEncoding() {

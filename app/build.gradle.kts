@@ -58,6 +58,10 @@ dependencies {
     implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
     implementation("com.github.jiwomdf:Scope-Storage-Utility:1.0.4")
 
+//    implementation("org.jcodec:jcodec:0.2.5")
+//    implementation("org.jcodec:jcodec-android:0.2.5")
+//    implementation("org.jcodec:jcodec-javase:0.2.5")
+    implementation("com.github.israel-fl:bitmap2video:2.0.0")
 
     val cameraxVersion = "1.3.0-rc01"
     implementation("androidx.camera:camera-core:${cameraxVersion}")

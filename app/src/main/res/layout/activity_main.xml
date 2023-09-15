@@ -16,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             app:gpuimage_show_loading="false"
-            app:gpuimage_surface_type="texture_view"
+            app:gpuimage_surface_type="surface_view"
             app:layout_constraintBottom_toTopOf="@+id/ll_navigation"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

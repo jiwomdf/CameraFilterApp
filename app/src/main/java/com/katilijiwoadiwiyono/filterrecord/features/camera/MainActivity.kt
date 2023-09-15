@@ -3,14 +3,18 @@ package com.katilijiwoadiwiyono.filterrecord.features.camera
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.hardware.Camera
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.view.Surface
 import android.view.View
 import android.widget.Toast
 import androidx.annotation.OptIn
@@ -28,6 +32,7 @@ import androidx.concurrent.futures.await
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
@@ -54,6 +59,7 @@ import jp.co.cyberagent.android.gpuimage.filter.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -140,11 +146,15 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
         initView()
         checkPermissions()
         setListener()
+
+        with(binding){
+
+        }
     }
 
     private fun initView() {
         with(binding) {
-            previewView.rotation = 90F
+
         }
     }
 
@@ -164,7 +174,6 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             }
 
             captureButton.setOnClickListener {
-                isRecording = true
                 if (!this@MainActivity::recordingState.isInitialized ||
                     recordingState is VideoRecordEvent.Finalize) {
                     enableUI(false)  // Our eventListener will turn on the Recording UI.
@@ -183,6 +192,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             }
 
             stopButton.setOnClickListener {
+                /** CameraX
                 // stopping: hide it after getting a click before we go to viewing fragment
                 stopButton.visibility = View.INVISIBLE
                 if (currentRecording == null || recordingState is VideoRecordEvent.Finalize) {
@@ -194,7 +204,67 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
                     recording.stop()
                     currentRecording = null
                 }
-                captureButton.setImageResource(R.drawable.ic_start)
+                captureButton.setImageResource(R.drawable.ic_start) **/
+
+                /* val bitmapToVideoEncoder = BitmapToVideoEncoder {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Encoding complete!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                val width = binding.previewView.width
+                val height = binding.previewView.height
+                bitmapToVideoEncoder.startEncoding(width, height, File("test"))
+                listImg.forEach {
+                    bitmapToVideoEncoder.queueFrame(it)
+                }
+                bitmapToVideoEncoder.stopEncoding() */
+
+                val path = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DCIM)
+                val file =  File(path, "video.mp4")
+
+                /** Bitmap img
+
+                val bitmapToVideoEncoder = BitmapToVideoEncoder {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Encoding complete!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                val width = binding.previewView.width
+                val height = binding.previewView.height
+                bitmapToVideoEncoder.startEncoding(width, height, file)
+                listImg.forEach {
+                    bitmapToVideoEncoder.queueFrame(it)
+                }
+                bitmapToVideoEncoder.stopEncoding() **/
+
+                /** Log.e("jiwo", "setListener: ${listImg.size}")
+                convertImagesToVideo(this@MainActivity, listImg.toTypedArray()) **/
+
+                /** Log.e("jiwo", "setListener: ${listImg.size}")
+                val muxer = Muxer(this@MainActivity, file)
+                muxer.mux(listImg)
+                muxer.setOnMuxingCompletedListener(object : MuxingCompletionListener {
+                    override fun onVideoSuccessful(file: File) {
+                        showToast("Video muxed - file path: ${file.absolutePath}")
+                    }
+                    override fun onVideoError(error: Throwable) {
+                        showToast("There was an error muxing the video")
+                    }
+                })
+
+                Thread {
+                    muxer.mux(listImg, null)
+                }.start() **/
+
+
+
 
                 isRecording = false
                 //TODO JIWO
@@ -202,8 +272,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             }
 
             btnTakePhoto.setOnClickListener {
-                val bitmap = previewView.gpuImage.bitmapWithFilterApplied
-                val fixBitmap = bitmap.rotateBitmap(90f) ?: kotlin.run {
+                val bitmap = previewView.gpuImage.bitmapWithFilterApplied ?: kotlin.run {
                     showToast("failed rotate bitmap")
                     return@setOnClickListener
                 }
@@ -220,7 +289,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
                         env = Environment.DIRECTORY_DCIM,
                         extension = Extension.get(Extension.PNG)
                     )
-                    .save(fixBitmap, 100, {
+                    .save(bitmap, 100, {
                         runOnUiThread {
                             showToast("successfully save $name")
                             getImageUri(name)?.let {
@@ -285,7 +354,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
                 converter.yuvToRgb(it.image!!, bitmap)
                 it.close()
                 previewView.post {
-                    previewView.setImage(bitmap)
+                    previewView.setImage(bitmap.rotateBitmap(90F))
                     if(isRecording) {
                         listImg.add(bitmap)
                     }
@@ -387,7 +456,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             arrayOf(
                 cameraButton,
                 captureButton,
-                stopButton,
+                //stopButton,
                 qualitySelection
             ).forEach {
                 it.isEnabled = enable
@@ -513,7 +582,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
             stopButton.apply {
                 // ensure the stop button is initialized disabled & invisible
                 visibility = View.INVISIBLE
-                isEnabled = false
+                //isEnabled = false
             }
 
             captureLiveStatus.observe(this@MainActivity) {
@@ -628,23 +697,15 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
 
         Log.i(TAG, "Recording started") **/
 
+        /***
+         * Bitmap Way
+         */
 
-        /** Bitmap record
-        val bitmapToVideoEncoder = BitmapToVideoEncoder {
-            Toast.makeText(
-                this@MainActivity,
-                "Encoding complete!",
-                Toast.LENGTH_LONG
-            ).show()
+        isRecording = true
+        with(binding) {
+            stopButton.isVisible = true
+            captureButton.isVisible = false
         }
-
-        val width = binding.previewView.width
-        val height = binding.previewView.height
-        bitmapToVideoEncoder.startEncoding(width, height, File(""))
-        listImg.forEach {
-            bitmapToVideoEncoder.queueFrame(it)
-        }
-        bitmapToVideoEncoder.stopEncoding() **/
     }
 
     private fun openInGallery(uri: Uri) {
@@ -652,7 +713,7 @@ class MainActivity: BaseActivity<ActivityMainBinding>() {
         intent.action = Intent.ACTION_VIEW
         intent.setDataAndType(uri, "image/*")
         startActivity(intent)
-
     }
+
 
 }
