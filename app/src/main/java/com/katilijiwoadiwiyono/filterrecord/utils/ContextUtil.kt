@@ -1,6 +1,5 @@
 package com.katilijiwoadiwiyono.filterrecord.utils
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri

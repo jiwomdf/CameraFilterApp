@@ -115,6 +115,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
     private fun setListener() {
         with(binding) {
             switchButton.setOnClickListener {
+                pbLoading.isVisible = true
                 releaseCamera()
                 lensFacing = if (lensFacing == LensFacing.BACK) {
                     LensFacing.FRONT
@@ -122,6 +123,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
                     LensFacing.BACK
                 }
                 toggleClick = true
+                pbLoading.isVisible = false
             }
 
             btnRecord.setOnClickListener {
@@ -137,6 +139,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
             }
 
             btnTakePhoto.setOnClickListener {
+                pbLoading.isVisible = true
                 captureBitmap {
                     it?.let {
                         val name = NameUtil.getImageName()
@@ -156,14 +159,17 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
                                     getImageUri(name, dir)?.let {
                                         openInGallery(it)
                                     }
+                                    pbLoading.isVisible = false
                                 }
                             }, {
                                 runOnUiThread {
                                     showToast("Something went wrong")
+                                    pbLoading.isVisible = false
                                 }
                             })
                     } ?: kotlin.run {
                         showToast("Something went wrong")
+                        pbLoading.isVisible = false
                     }
                 }
             }

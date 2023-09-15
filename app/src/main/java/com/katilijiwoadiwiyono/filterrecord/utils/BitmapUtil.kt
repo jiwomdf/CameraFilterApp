@@ -1,10 +1,7 @@
 package com.katilijiwoadiwiyono.filterrecord.utils
 
-import android.app.Activity
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Matrix
-import android.net.Uri
 import android.opengl.GLException
 import android.util.Log
 import java.nio.IntBuffer

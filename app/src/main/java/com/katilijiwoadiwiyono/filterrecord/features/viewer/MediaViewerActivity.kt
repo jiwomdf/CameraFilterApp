@@ -82,17 +82,6 @@ class MediaViewerActivity : BaseActivity<ActivityMediaViewerBinding>() {
     }
 
 
-    private fun getFileSizeFromUri(contentUri: Uri): Long? {
-        val cursor = this
-            .contentResolver
-            .query(contentUri, null, null, null, null)
-            ?: return null
-
-        val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-        cursor.moveToFirst()
-        return cursor.getLong(sizeIndex)
-    }
-
     private fun getAbsolutePathFromUri(contentUri: Uri): String? {
         var cursor: Cursor? = null
         return try {
