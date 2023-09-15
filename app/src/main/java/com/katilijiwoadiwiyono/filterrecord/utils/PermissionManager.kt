@@ -194,11 +194,24 @@ fun Fragment.checkMultiplePermissions(
 
 private fun hasPermission(context: Context, permission: String): Boolean =
     ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-
-private fun hasPermissions(context: Context, permissions: Array<String>): Boolean =
+ fun hasPermissions(context: Context, permissions: Array<String>): Boolean =
     permissions.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
+
+fun hasPermissions(
+    context: Context,
+    permissions: Array<String>,
+    hasPermission: (() -> Unit)? = null,
+    notHasPermission: (() -> Unit)? = null
+) {
+    val isHasPermission = hasPermissions(context, permissions)
+    if(isHasPermission) {
+        hasPermission?.invoke()
+    } else {
+        notHasPermission?.invoke()
+    }
+}
 
 /**
  * Default request permission rationale dialog

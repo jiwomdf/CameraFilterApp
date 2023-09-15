@@ -11,12 +11,10 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <jp.co.cyberagent.android.gpuimage.GPUImageView
+        <com.katilijiwoadiwiyono.filterrecord.utils.widget.PortraitFrameLayout
             android:id="@+id/previewView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:gpuimage_show_loading="false"
-            app:gpuimage_surface_type="surface_view"
             app:layout_constraintBottom_toTopOf="@+id/ll_navigation"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -70,7 +68,7 @@
                 android:background="@color/black">
 
                 <ImageButton
-                    android:id="@+id/camera_button"
+                    android:id="@+id/switch_button"
                     android:layout_width="76dp"
                     android:layout_height="76dp"
                     android:background="@drawable/ic_switch"
@@ -89,7 +87,7 @@
                     android:background="@drawable/camera_alt_24"/>
 
                 <ImageButton
-                    android:id="@+id/capture_button"
+                    android:id="@+id/btn_record"
                     android:layout_width="76dp"
                     android:layout_height="76dp"
                     android:background="@drawable/ic_start"

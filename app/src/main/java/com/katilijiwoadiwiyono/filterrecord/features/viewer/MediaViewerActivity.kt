@@ -71,16 +71,6 @@ class MediaViewerActivity : BaseActivity<ActivityMediaViewerBinding>() {
 
     private fun showVideo(uri : Uri) {
         with(binding) {
-            val fileSize = getFileSizeFromUri(uri)
-            if (fileSize == null || fileSize <= 0) {
-                showToast("Failed to get recorded file size, could not be played!")
-                return
-            }
-
-            val filePath = getAbsolutePathFromUri(uri) ?: return
-            val fileInfo = "FileSize: $fileSize\n $filePath"
-            videoViewerTips.text = fileInfo
-
             val mc = MediaController(this@MediaViewerActivity)
             videoViewer.apply {
                 setVideoURI(uri)
