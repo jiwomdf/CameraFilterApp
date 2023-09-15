@@ -1,4 +1,4 @@
-package com.katilijiwoadiwiyono.filterrecord
+package com.katilijiwoadiwiyono.filterrecord.features.camera
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
-import android.widget.TextView
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -28,12 +27,14 @@ import androidx.core.util.Consumer
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.whenCreated
+import androidx.lifecycle.whenStarted
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.katilijiwoadiwiyono.filterrecord.adapter.GenericListAdapter
+import com.katilijiwoadiwiyono.filterrecord.R
+import com.katilijiwoadiwiyono.filterrecord.adapter.VideoQualityAdapter
 import com.katilijiwoadiwiyono.filterrecord.common.BaseActivity
 import com.katilijiwoadiwiyono.filterrecord.data.model.CameraCapability
 import com.katilijiwoadiwiyono.filterrecord.databinding.ActivityMainBinding
+import com.katilijiwoadiwiyono.filterrecord.features.viewer.MediaViewerActivity
 import com.katilijiwoadiwiyono.filterrecord.utils.UiState
 import com.katilijiwoadiwiyono.filterrecord.utils.checkPermission
 import com.katilijiwoadiwiyono.filterrecord.utils.getAspectRatio
@@ -96,17 +97,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
      */
     init {
         enumerationDeferred = lifecycleScope.async {
-            whenCreated {
+            whenStarted {
                 val provider = ProcessCameraProvider.getInstance(this@MainActivity).await()
-
                 provider.unbindAll()
+
                 for (camSelector in arrayOf(
                     CameraSelector.DEFAULT_BACK_CAMERA,
                     CameraSelector.DEFAULT_FRONT_CAMERA
                 )) {
                     try {
-                        // just get the camera.cameraInfo to query capabilities
-                        // we are not binding anything here.
                         if (provider.hasCamera(camSelector)) {
                             val camera = provider.bindToLifecycle(this@MainActivity, camSelector)
                             QualitySelector
@@ -138,49 +137,46 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
      * Camera Section
      */
     private suspend fun bindCaptureUseCase() {
-        val cameraProvider = ProcessCameraProvider.getInstance(this).await()
+        with(binding) {
+            val cameraProvider = ProcessCameraProvider.getInstance(this@MainActivity).await()
+            val cameraSelector = getCameraSelector(cameraIndex)
 
-        val cameraSelector = getCameraSelector(cameraIndex)
+            val quality = cameraCapabilities[cameraIndex].qualities[qualityIndex]
+            val qualitySelector = QualitySelector.from(quality)
 
-        // create the user required QualitySelector (video resolution): we know this is
-        // supported, a valid qualitySelector will be created.
-        val quality = cameraCapabilities[cameraIndex].qualities[qualityIndex]
-        val qualitySelector = QualitySelector.from(quality)
-
-        binding.previewView.updateLayoutParams<ConstraintLayout.LayoutParams> {
-            val orientation = resources.configuration.orientation
-            dimensionRatio = quality.getAspectRatioString(quality,
-                (orientation == Configuration.ORIENTATION_PORTRAIT))
-        }
-
-        val preview = Preview.Builder()
-            .setTargetAspectRatio(quality.getAspectRatio(quality))
-            .build().apply {
-                setSurfaceProvider(binding.previewView.surfaceProvider)
+            previewView.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                val orientation = resources.configuration.orientation
+                dimensionRatio = quality.getAspectRatioString(
+                    (orientation == Configuration.ORIENTATION_PORTRAIT)
+                )
             }
 
-        // build a recorder, which can:
-        //   - record video/audio to MediaStore(only shown here), File, ParcelFileDescriptor
-        //   - be used create recording(s) (the recording performs recording)
-        val recorder = Recorder.Builder()
-            .setQualitySelector(qualitySelector)
-            .build()
-        videoCapture = VideoCapture.withOutput(recorder)
+            val preview = Preview.Builder()
+                .setTargetAspectRatio(quality.getAspectRatio())
+                .build().apply {
+                    setSurfaceProvider(previewView.surfaceProvider)
+                }
 
-        try {
-            cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                this,
-                cameraSelector,
-                videoCapture,
-                preview
-            )
-        } catch (exc: Exception) {
-            // we are on main thread, let's reset the controls on the UI.
-            Log.e(TAG, "Use case binding failed", exc)
-            resetUIandState("bindToLifecycle failed: $exc")
+            val recorder = Recorder.Builder()
+                .setQualitySelector(qualitySelector)
+                .build()
+            videoCapture = VideoCapture.withOutput(recorder)
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    this@MainActivity,
+                    cameraSelector,
+                    videoCapture,
+                    preview
+                )
+            } catch (exc: Exception) {
+                // we are on main thread, let's reset the controls on the UI.
+                Log.e(TAG, "Use case binding failed", exc)
+                resetUIandState("bindToLifecycle failed: $exc")
+            }
+            enableUI(true)
         }
-        enableUI(true)
     }
 
     /**
@@ -188,7 +184,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
      *   idx is even number:  CameraSelector.LENS_FACING_BACK
      *          odd number:   CameraSelector.LENS_FACING_FRONT
      */
-    private fun getCameraSelector(idx: Int) : CameraSelector {
+    private fun getCameraSelector(idx: Int): CameraSelector {
         if (cameraCapabilities.size == 0) {
             Log.i(TAG, "Error: This device does not have any camera, bailing out")
             finish()
@@ -201,16 +197,16 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
      *  - at recording: hide audio, qualitySelection,change camera UI; enable stop button
      *  - otherwise: show all except the stop button
      */
-    private fun showUI(state: UiState, status:String = "idle") {
+    private fun showUI(state: UiState, status: String = "idle") {
         binding.let {
-            when(state) {
+            when (state) {
                 UiState.IDLE -> {
                     it.captureButton.setImageResource(R.drawable.ic_start)
                     it.stopButton.visibility = View.INVISIBLE
 
-                    it.cameraButton.visibility= View.VISIBLE
+                    it.cameraButton.visibility = View.VISIBLE
                     it.audioSelection.visibility = View.VISIBLE
-                    it.qualitySelection.visibility= View.VISIBLE
+                    it.qualitySelection.visibility = View.VISIBLE
                 }
                 UiState.RECORDING -> {
                     it.cameraButton.visibility = View.INVISIBLE
@@ -258,20 +254,24 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
      *    Once recording is started, need to disable able UI to avoid conflict.
      */
     private fun enableUI(enable: Boolean) {
-        arrayOf(binding.cameraButton,
-            binding.captureButton,
-            binding.stopButton,
-            binding.audioSelection,
-            binding.qualitySelection).forEach {
-            it.isEnabled = enable
-        }
-        // disable the camera button if no device to switch
-        if (cameraCapabilities.size <= 1) {
-            binding.cameraButton.isEnabled = false
-        }
-        // disable the resolution list if no resolution to switch
-        if (cameraCapabilities[cameraIndex].qualities.size <= 1) {
-            binding.qualitySelection.apply { isEnabled = false }
+        with(binding) {
+            arrayOf(
+                cameraButton,
+                captureButton,
+                stopButton,
+                audioSelection,
+                qualitySelection
+            ).forEach {
+                it.isEnabled = enable
+            }
+            // disable the camera button if no device to switch
+            if (cameraCapabilities.size <= 1) {
+                cameraButton.isEnabled = false
+            }
+            // disable the resolution list if no resolution to switch
+            if (cameraCapabilities[cameraIndex].qualities.size <= 1) {
+                qualitySelection.apply { isEnabled = false }
+            }
         }
     }
 
@@ -290,28 +290,25 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         // create the adapter to Quality selection RecyclerView
         binding.qualitySelection.apply {
             layoutManager = LinearLayoutManager(context)
-            adapter = GenericListAdapter(
-                selectorStrings,
-                itemLayoutId = R.layout.video_quality_item
-            ) { holderView, qcString, position ->
+            adapter = VideoQualityAdapter(
+                dataset = selectorStrings
+            ) { binding, qcString, position ->
 
-                holderView.apply {
-                    findViewById<TextView>(R.id.qualityTextView)?.text = qcString
-                    // select the default quality selector
-                    isSelected = (position == qualityIndex)
+                binding.apply {
+                    qualityTextView.text = qcString
+                    root.isSelected = (position == qualityIndex)
                 }
 
-                holderView.setOnClickListener { view ->
+                binding.root.setOnClickListener {
                     if (qualityIndex == position) return@setOnClickListener
 
-                    let {
-                        // deselect the previous selection on UI.
-                        it.findViewHolderForAdapterPosition(qualityIndex)
-                            ?.itemView
-                            ?.isSelected = false
-                    }
+                    // deselect the previous selection on UI.
+                    findViewHolderForAdapterPosition(qualityIndex)
+                        ?.itemView
+                        ?.isSelected = false
+
                     // turn on the new selection on UI.
-                    view.isSelected = true
+                    binding.root.isSelected = true
                     qualityIndex = position
 
                     // rebind the use cases to put the new QualitySelection in action.
@@ -381,77 +378,78 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
      */
     @SuppressLint("ClickableViewAccessibility", "MissingPermission")
     private fun initializeUI() {
-        binding.cameraButton.apply {
-            setOnClickListener {
-                cameraIndex = (cameraIndex + 1) % cameraCapabilities.size
-                // camera device change is in effect instantly:
-                //   - reset quality selection
-                //   - restart preview
-                qualityIndex = DEFAULT_QUALITY_IDX
-                initializeQualitySectionsUI()
-                enableUI(false)
-                lifecycleScope.launch {
-                    bindCaptureUseCase()
-                }
-            }
-            isEnabled = false
-        }
-
-        // audioEnabled by default is disabled.
-        binding.audioSelection.isChecked = audioEnabled
-        binding.audioSelection.setOnClickListener {
-            audioEnabled = binding.audioSelection.isChecked
-        }
-
-        // React to user touching the capture button
-        binding.captureButton.apply {
-            setOnClickListener {
-                if (!this@MainActivity::recordingState.isInitialized ||
-                    recordingState is VideoRecordEvent.Finalize)
-                {
-                    enableUI(false)  // Our eventListener will turn on the Recording UI.
-                    startRecording()
-                } else {
-                    when (recordingState) {
-                        is VideoRecordEvent.Start -> {
-                            currentRecording?.pause()
-                            binding.stopButton.visibility = View.VISIBLE
-                        }
-                        is VideoRecordEvent.Pause -> currentRecording?.resume()
-                        is VideoRecordEvent.Resume -> currentRecording?.pause()
-                        else -> throw IllegalStateException("recordingState in unknown state")
+        with(binding) {
+            cameraButton.apply {
+                setOnClickListener {
+                    cameraIndex = (cameraIndex + 1) % cameraCapabilities.size
+                    // camera device change is in effect instantly:
+                    //   - reset quality selection
+                    //   - restart preview
+                    qualityIndex = DEFAULT_QUALITY_IDX
+                    initializeQualitySectionsUI()
+                    enableUI(false)
+                    lifecycleScope.launch {
+                        bindCaptureUseCase()
                     }
                 }
+                isEnabled = false
             }
-            isEnabled = false
-        }
 
-        binding.stopButton.apply {
-            setOnClickListener {
-                // stopping: hide it after getting a click before we go to viewing fragment
-                binding.stopButton.visibility = View.INVISIBLE
-                if (currentRecording == null || recordingState is VideoRecordEvent.Finalize) {
-                    return@setOnClickListener
+            // audioEnabled by default is disabled.
+            audioSelection.isChecked = audioEnabled
+            audioSelection.setOnClickListener {
+                audioEnabled = audioSelection.isChecked
+            }
+
+            // React to user touching the capture button
+            captureButton.apply {
+                setOnClickListener {
+                    if (!this@MainActivity::recordingState.isInitialized ||
+                        recordingState is VideoRecordEvent.Finalize) {
+                        enableUI(false)  // Our eventListener will turn on the Recording UI.
+                        startRecording()
+                    } else {
+                        when (recordingState) {
+                            is VideoRecordEvent.Start -> {
+                                currentRecording?.pause()
+                                stopButton.visibility = View.VISIBLE
+                            }
+                            is VideoRecordEvent.Pause -> currentRecording?.resume()
+                            is VideoRecordEvent.Resume -> currentRecording?.pause()
+                            else -> throw IllegalStateException("recordingState in unknown state")
+                        }
+                    }
                 }
+                isEnabled = false
+            }
 
-                val recording = currentRecording
-                if (recording != null) {
-                    recording.stop()
-                    currentRecording = null
+            stopButton.apply {
+                setOnClickListener {
+                    // stopping: hide it after getting a click before we go to viewing fragment
+                    stopButton.visibility = View.INVISIBLE
+                    if (currentRecording == null || recordingState is VideoRecordEvent.Finalize) {
+                        return@setOnClickListener
+                    }
+
+                    val recording = currentRecording
+                    if (recording != null) {
+                        recording.stop()
+                        currentRecording = null
+                    }
+                    captureButton.setImageResource(R.drawable.ic_start)
                 }
-                binding.captureButton.setImageResource(R.drawable.ic_start)
+                // ensure the stop button is initialized disabled & invisible
+                visibility = View.INVISIBLE
+                isEnabled = false
             }
-            // ensure the stop button is initialized disabled & invisible
-            visibility = View.INVISIBLE
-            isEnabled = false
-        }
 
-        captureLiveStatus.observe(this) {
-            binding.captureStatus.apply {
-                post { text = it }
+            captureLiveStatus.observe(this@MainActivity) {
+                binding.captureStatus.apply {
+                    post { text = it }
+                }
             }
+            captureLiveStatus.value = getString(R.string.Idle)
         }
-        captureLiveStatus.value = getString(R.string.Idle)
     }
 
     /**
@@ -467,12 +465,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         if (event is VideoRecordEvent.Finalize) {
             // display the captured video
             lifecycleScope.launch {
-                //TODO:JIWO Navigate
-//                navController.navigate(
-//                    CaptureFragmentDirections.actionCaptureToVideoViewer(
-//                        event.outputResults.outputUri
-//                    )
-//                )
+                val uriAsString = event.outputResults.outputUri.toString()
+                startActivity(
+                    MediaViewerActivity.newInstance(this@MainActivity, uriAsString)
+                )
             }
         }
     }
@@ -495,15 +491,19 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 // placeholder: we update the UI with new status after this when() block,
                 // nothing needs to do here.
             }
+
             is VideoRecordEvent.Start -> {
                 showUI(UiState.RECORDING, event.getNameString())
             }
-            is VideoRecordEvent.Finalize-> {
+
+            is VideoRecordEvent.Finalize -> {
                 showUI(UiState.FINALIZED, event.getNameString())
             }
+
             is VideoRecordEvent.Pause -> {
                 binding.captureButton.setImageResource(R.drawable.ic_resume)
             }
+
             is VideoRecordEvent.Resume -> {
                 binding.captureButton.setImageResource(R.drawable.ic_pause)
             }
@@ -513,7 +513,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         val size = stats.numBytesRecorded / 1000
         val time = java.util.concurrent.TimeUnit.NANOSECONDS.toSeconds(stats.recordedDurationNanos)
         var text = "${state}: recorded ${size}KB, in ${time}second"
-        if(event is VideoRecordEvent.Finalize)
+        if (event is VideoRecordEvent.Finalize)
             text = "${text}\nFile saved to: ${event.outputResults.outputUri}"
 
         captureLiveStatus.value = text
@@ -540,7 +540,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         }
         val mediaStoreOutput = MediaStoreOutputOptions.Builder(
             this.contentResolver,
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        )
             .setContentValues(contentValues)
             .build()
 

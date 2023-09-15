@@ -7,11 +7,11 @@ import androidx.camera.video.Quality
 /**
  * a helper function to retrieve the aspect ratio from a QualitySelector enum.
  */
-fun Quality.getAspectRatio(quality: Quality): Int {
+fun Quality.getAspectRatio(): Int {
     return when {
         arrayOf(Quality.UHD, Quality.FHD, Quality.HD)
-            .contains(quality) -> AspectRatio.RATIO_16_9
-        (quality == Quality.SD) -> AspectRatio.RATIO_4_3
+            .contains(this) -> AspectRatio.RATIO_16_9
+        (this == Quality.SD) -> AspectRatio.RATIO_4_3
         else -> throw UnsupportedOperationException()
     }
 }
@@ -19,12 +19,12 @@ fun Quality.getAspectRatio(quality: Quality): Int {
 /**
  * a helper function to retrieve the aspect ratio string from a Quality enum.
  */
-fun Quality.getAspectRatioString(quality: Quality, portraitMode: Boolean): String {
+fun Quality.getAspectRatioString(portraitMode: Boolean): String {
     val hdQualities = arrayOf(Quality.UHD, Quality.FHD, Quality.HD)
     val ratio =
         when {
-            hdQualities.contains(quality) -> Pair(16, 9)
-            quality == Quality.SD -> Pair(4, 3)
+            hdQualities.contains(this) -> Pair(16, 9)
+            this == Quality.SD -> Pair(4, 3)
             else -> throw UnsupportedOperationException()
         }
 
