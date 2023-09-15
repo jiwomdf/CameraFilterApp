@@ -34,34 +34,38 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:background="@color/black"
-                android:gravity="center">
+                android:gravity="center"
+                android:paddingTop="8dp">
 
-                <LinearLayout
-                    android:id="@+id/ll_red"
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cv_red"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
                     android:layout_marginEnd="16dp"
-                    android:background="@color/red"
-                    android:orientation="horizontal" />
+                    android:orientation="horizontal"
+                    app:cardBackgroundColor="@color/red"
+                    app:cardCornerRadius="100dp" />
 
-                <LinearLayout
-                    android:id="@+id/ll_green"
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cv_green"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
-                    android:background="@color/green"
-                    android:orientation="horizontal"/>
+                    android:orientation="horizontal"
+                    app:cardBackgroundColor="@color/green"
+                    app:cardCornerRadius="100dp" />
 
-                <LinearLayout
-                    android:id="@+id/ll_blue"
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cv_blue"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
                     android:layout_marginStart="16dp"
-                    android:background="@color/blue"
-                    android:orientation="horizontal"/>
+                    android:orientation="horizontal"
+                    app:cardBackgroundColor="@color/blue"
+                    app:cardCornerRadius="100dp" />
 
             </LinearLayout>
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="0.1"
@@ -69,52 +73,59 @@
 
                 <ImageButton
                     android:id="@+id/switch_button"
-                    android:layout_width="76dp"
-                    android:layout_height="76dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="10dp"
                     android:background="@drawable/ic_switch"
                     android:contentDescription=""
                     android:scaleType="fitCenter"
-                    app:layout_constraintBottom_toTopOf="@+id/capture_status"
-                    app:layout_constraintEnd_toStartOf="@+id/capture_button"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:ignore="ImageContrastCheck"
+                    tools:visibility="visible" />
+
+                <ImageButton
+                    android:id="@+id/btn_record"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="10dp"
+                    android:background="@drawable/ic_start"
+                    android:contentDescription=""
+                    android:scaleType="fitCenter"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:ignore="ImageContrastCheck" />
+
+                <ImageButton
+                    android:id="@+id/stop_button"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_margin="10dp"
+                    android:background="@drawable/ic_stop"
+                    android:contentDescription=""
+                    android:scaleType="fitCenter"
+                    android:visibility="invisible"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
                     tools:ignore="ImageContrastCheck"
                     tools:visibility="visible" />
 
                 <ImageButton
                     android:id="@+id/btn_take_photo"
-                    android:layout_width="76dp"
-                    android:layout_height="76dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:layout_marginStart="32dp"
-                    android:background="@drawable/camera_alt_24"/>
+                    android:background="@drawable/camera_alt_24"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
-                <ImageButton
-                    android:id="@+id/btn_record"
-                    android:layout_width="76dp"
-                    android:layout_height="76dp"
-                    android:background="@drawable/ic_start"
-                    android:contentDescription=""
-                    android:scaleType="fitCenter"
-                    android:translationX="48dp"
-                    app:layout_constraintBottom_toBottomOf="@+id/camera_button"
-                    app:layout_constraintEnd_toEndOf="@+id/vertical_guideline"
-                    app:layout_constraintTop_toTopOf="@+id/camera_button"
-                    tools:ignore="ImageContrastCheck" />
-
-                <ImageButton
-                    android:id="@+id/stop_button"
-                    android:layout_width="76dp"
-                    android:layout_height="76dp"
-                    android:background="@drawable/ic_stop"
-                    android:contentDescription=""
-                    android:scaleType="fitCenter"
-                    android:translationX="48dp"
-                    android:visibility="invisible"
-                    app:layout_constraintBottom_toBottomOf="@+id/capture_button"
-                    app:layout_constraintStart_toEndOf="@+id/capture_button"
-                    app:layout_constraintTop_toTopOf="@+id/capture_button"
-                    tools:ignore="ImageContrastCheck"
-                    tools:visibility="visible" />
-
-            </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
         </LinearLayout>
 

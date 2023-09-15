@@ -168,7 +168,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
                 }
             }
 
-            llRed.setOnClickListener {
+            cvRed.setOnClickListener {
                 GlRGBFilter().apply {
                     setRed(1f)
                     setBlue(0f)
@@ -177,7 +177,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
                 }
             }
 
-            llBlue.setOnClickListener {
+            cvBlue.setOnClickListener {
                 GlRGBFilter().apply {
                     setRed(0f)
                     setBlue(1f)
@@ -186,7 +186,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
                 }
             }
 
-            llGreen.setOnClickListener {
+            cvGreen.setOnClickListener {
                 GlRGBFilter().apply {
                     setRed(0f)
                     setBlue(0f)
@@ -199,7 +199,7 @@ open class MainActivity: BaseActivity<ActivityMainBinding>() {
 
     private fun buttonState(isRecord: Boolean) {
         with(binding) {
-            val nonRecordView = arrayOf(btnTakePhoto, switchButton, btnRecord, llGreen, llBlue, llRed)
+            val nonRecordView = arrayOf(btnTakePhoto, switchButton, btnRecord, cvGreen, cvBlue, cvRed)
             val recordView = arrayOf(stopButton)
             nonRecordView.forEach {
                 it.isVisible = !isRecord
