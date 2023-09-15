@@ -42,6 +42,7 @@
                     android:layout_width="66dp"
                     android:layout_height="66dp"
                     android:layout_marginEnd="16dp"
+                    android:foreground="?selectableItemBackground"
                     android:orientation="horizontal"
                     app:cardBackgroundColor="@color/red"
                     app:cardCornerRadius="100dp" />
@@ -50,6 +51,7 @@
                     android:id="@+id/cv_green"
                     android:layout_width="66dp"
                     android:layout_height="66dp"
+                    android:foreground="?selectableItemBackground"
                     android:orientation="horizontal"
                     app:cardBackgroundColor="@color/green"
                     app:cardCornerRadius="100dp" />
@@ -59,6 +61,7 @@
                     android:layout_width="66dp"
                     android:layout_height="66dp"
                     android:layout_marginStart="16dp"
+                    android:foreground="?selectableItemBackground"
                     android:orientation="horizontal"
                     app:cardBackgroundColor="@color/blue"
                     app:cardCornerRadius="100dp" />
@@ -78,6 +81,7 @@
                     android:layout_margin="10dp"
                     android:background="@drawable/ic_switch"
                     android:contentDescription=""
+                    android:foreground="?selectableItemBackground"
                     android:scaleType="fitCenter"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
@@ -92,6 +96,7 @@
                     android:layout_margin="10dp"
                     android:background="@drawable/ic_start"
                     android:contentDescription=""
+                    android:foreground="?selectableItemBackground"
                     android:scaleType="fitCenter"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -106,6 +111,7 @@
                     android:layout_margin="10dp"
                     android:background="@drawable/ic_stop"
                     android:contentDescription=""
+                    android:foreground="?selectableItemBackground"
                     android:scaleType="fitCenter"
                     android:visibility="invisible"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -121,6 +127,7 @@
                     android:layout_height="56dp"
                     android:layout_marginStart="32dp"
                     android:background="@drawable/camera_alt_24"
+                    android:foreground="?selectableItemBackground"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -138,18 +145,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.50" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/quality_selection"
-        android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:layout_centerVertical="false"
-        android:background="?android:attr/activatedBackgroundIndicator"
-        android:choiceMode="singleChoice"
-        app:layout_constraintBottom_toTopOf="@id/vertical_guideline"
-        app:layout_constraintEnd_toEndOf="@+id/vertical_guideline"
-        app:layout_constraintStart_toStartOf="@+id/vertical_guideline"
-        app:layout_constraintTop_toTopOf="@id/vertical_guideline" />
 
     <TextView
         android:id="@+id/capture_status"
