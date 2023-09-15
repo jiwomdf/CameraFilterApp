@@ -39,60 +39,56 @@ class MediaViewerActivity : BaseActivity<ActivityMediaViewerBinding>() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
+        setupView()
+        setupListener()
+    }
+
+    private fun setupView() {
         val uri = Uri.parse(intent.getStringExtra(VIDEO_URI_ARGS))
-
-        with(binding) {
-            val tv = TypedValue()
-            if (this@MediaViewerActivity.theme.resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                val actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data, resources.displayMetrics)
-                videoViewerTips.y  = videoViewerTips.y - actionBarHeight
-            }
-
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-                showVideo(uri)
-            } else {
-                // force MediaScanner to re-scan the media file.
-                val path = getAbsolutePathFromUri(uri) ?: return
-                MediaScannerConnection.scanFile(
-                    this@MediaViewerActivity, arrayOf(path), null
-                ) { _, uri ->
-                    // playback video on main thread with VideoView
-                    if (uri != null) {
-                        lifecycleScope.launch {
-                            showVideo(uri)
-                        }
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            showVideo(uri)
+        } else {
+            val path = getAbsolutePathFromUri(uri) ?: return
+            MediaScannerConnection.scanFile(this@MediaViewerActivity,
+                arrayOf(path), null) { _, uri ->
+                if (uri != null) {
+                    lifecycleScope.launch {
+                        showVideo(uri)
                     }
                 }
             }
+        }
+    }
 
-            // Handle back button press
+    private fun setupListener() {
+        with(binding) {
             backButton.setOnClickListener {
                 finish()
             }
         }
-
     }
 
-
     private fun showVideo(uri : Uri) {
-        val fileSize = getFileSizeFromUri(uri)
-        if (fileSize == null || fileSize <= 0) {
-            Log.e("VideoViewerFragment", "Failed to get recorded file size, could not be played!")
-            return
+        with(binding) {
+            val fileSize = getFileSizeFromUri(uri)
+            if (fileSize == null || fileSize <= 0) {
+                showToast("Failed to get recorded file size, could not be played!")
+                return
+            }
+
+            val filePath = getAbsolutePathFromUri(uri) ?: return
+            val fileInfo = "FileSize: $fileSize\n $filePath"
+            videoViewerTips.text = fileInfo
+
+            val mc = MediaController(this@MediaViewerActivity)
+            videoViewer.apply {
+                setVideoURI(uri)
+                setMediaController(mc)
+                requestFocus()
+            }.start()
+            mc.show(0)
         }
-
-        val filePath = getAbsolutePathFromUri(uri) ?: return
-        val fileInfo = "FileSize: $fileSize\n $filePath"
-        Log.i("VideoViewerFragment", fileInfo)
-        binding.videoViewerTips.text = fileInfo
-
-        val mc = MediaController(this)
-        binding.videoViewer.apply {
-            setVideoURI(uri)
-            setMediaController(mc)
-            requestFocus()
-        }.start()
-        mc.show(0)
     }
 
 
@@ -104,10 +100,7 @@ class MediaViewerActivity : BaseActivity<ActivityMediaViewerBinding>() {
 
         val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
         cursor.moveToFirst()
-
-        cursor.use {
-            return it.getLong(sizeIndex)
-        }
+        return cursor.getLong(sizeIndex)
     }
 
     private fun getAbsolutePathFromUri(contentUri: Uri): String? {

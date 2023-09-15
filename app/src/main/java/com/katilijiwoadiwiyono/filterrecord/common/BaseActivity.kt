@@ -22,7 +22,7 @@ abstract class BaseActivity<VB: ViewBinding>: AppCompatActivity() {
         setContentView(binding.root)
     }
 
-    fun showToast(message: String, length: Int) {
+    fun showToast(message: String, length: Int = Toast.LENGTH_SHORT) {
         Toast.makeText(this, message, length).show()
     }
 
